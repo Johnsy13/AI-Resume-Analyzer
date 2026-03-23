@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analysis History</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" href="static/logo.png">
+</head>
+<body>
+    <div class="page-bg"></div>
+
+    <header class="topbar">
+        <div class="logo">AI Resume Analyzer</div>
+        <div class="topbar-actions">
+            <a href="/" class="btn btn-secondary small-btn">Home</a>
+            <button id="themeToggle" class="btn btn-secondary small-btn" type="button">🌙 Dark Mode</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <section class="hero modern-hero">
+            <div class="hero-left">
+                <span class="badge">Saved Reports</span>
+                <h1>Resume Analysis History</h1>
+                <p>All your previous resume analyses are stored here.</p>
+            </div>
+        </section>
+
+        <section class="glass-card">
+            <div class="section-header">
+                <h2>Previous Analyses</h2>
+            </div>
+
+            {% if records %}
+                <div class="history-list">
+                    {% for record in records %}
+                        <a href="/history/{{ record.id }}" class="history-card">
+                            <div>
+                                <h3>{{ record.filename }}</h3>
+                                <p>Best Role: {{ record.best_role }}</p>
+                                <p>Target Role: {{ record.target_role }}</p>
+                                <p>JD Match: {{ record.jd_match_score }}%</p>
+                            </div>
+                            <div class="history-right">
+                                <span class="history-score">ATS {{ record.ats_score }}%</span>
+                                <span class="history-date">{{ record.created_at }}</span>
+                            </div>
+                        </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p style="color: var(--text-muted); font-size: 0.9rem; padding: 1rem 0;">No history found yet. Analyze a resume to get started.</p>
+            {% endif %}
+        </section>
+    </div>
+
+    <script>
+        const themeToggle = document.getElementById('themeToggle');
+
+        function applyTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                themeToggle.textContent = '☀️ Light Mode';
+            } else {
+                document.body.classList.remove('dark-mode');
+                themeToggle.textContent = '🌙 Dark Mode';
+            }
+        }
+
+        applyTheme();
+
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+            applyTheme();
+        });
+    </script>
+</body>
+</html>

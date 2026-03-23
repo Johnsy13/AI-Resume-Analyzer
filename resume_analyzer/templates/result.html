@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Analysis Result</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" href="static/logo.png">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="page-bg"></div>
+
+    <header class="topbar">
+        <div class="logo">AI Resume Analyzer</div>
+        <div class="topbar-actions">
+            <a href="/" class="btn btn-secondary small-btn">Home</a>
+            <a href="/history" class="btn btn-secondary small-btn">History</a>
+            <button id="themeToggle" class="btn btn-secondary small-btn" type="button">🌙 Dark Mode</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <section class="hero modern-hero result-hero">
+            <div class="hero-left">
+                <span class="badge">Analysis Dashboard</span>
+                <h1>Resume Insights for {{ result.filename }}</h1>
+                <p>
+                    Here is your complete analysis including ATS score, role fit,
+                    skill categories, job description match, interview questions,
+                    cover letter, and learning roadmap.
+                </p>
+            </div>
+            <div class="hero-right score-panel glass-card">
+                <div class="score-ring" style="background: conic-gradient(#00d4ff 0% {{ result.ats_score }}%, rgba(100,200,255,0.12) {{ result.ats_score }}% 100%);">
+                    <div class="score-value">{{ result.ats_score }}%</div>
+                </div>
+                <p>ATS Score</p>
+            </div>
+        </section>
+
+        <section class="stats-grid">
+            <div class="metric-card glass-card">
+                <span class="metric-title">Best Role</span>
+                <h3>{{ result.best_role }}</h3>
+            </div>
+            <div class="metric-card glass-card">
+                <span class="metric-title">Target Role Match</span>
+                <h3>{{ result.target_role_score }}%</h3>
+            </div>
+            <div class="metric-card glass-card">
+                <span class="metric-title">JD Match</span>
+                <h3>{{ result.jd_match_score }}%</h3>
+            </div>
+            <div class="metric-card glass-card">
+                <span class="metric-title">Experience Level</span>
+                <h3>{{ result.experience_level }}</h3>
+            </div>
+        </section>
+
+        <section class="content-grid two-col">
+            <div class="glass-card">
+                <div class="section-header">
+                    <h2>Candidate Details</h2>
+                </div>
+                <div class="info-list">
+                    <div class="info-row"><span>Name</span><strong>{{ result.basic_info.name }}</strong></div>
+                    <div class="info-row"><span>Email</span><strong>{{ result.basic_info.email }}</strong></div>
+                    <div class="info-row"><span>Phone</span><strong>{{ result.basic_info.phone }}</strong></div>
+                    <div class="info-row"><span>Detected Skills</span><strong>{{ result.detected_skill_count }}</strong></div>
+                </div>
+
+                <div class="progress-block">
+                    <div class="progress-top">
+                        <span>Resume Completeness</span>
+                        <strong>{{ result.section_percent }}%</strong>
+                    </div>
+                    <div class="progress-bar modern-progress">
+                        <div class="progress-fill" style="width: {{ result.section_percent }}%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="section-header">
+                    <h2>Resume Section Status</h2>
+                </div>
+                <div class="tag-container">
+                    {% for section, status in result.section_status.items() %}
+                        {% if status %}
+                            <span class="tag success">✓ {{ section }}</span>
+                        {% else %}
+                            <span class="tag danger">✗ {{ section }}</span>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section class="content-grid two-col">
+            <div class="glass-card chart-card">
+                <div class="section-header">
+                    <h2>Role Match Comparison</h2>
+                </div>
+                <canvas id="roleChart"></canvas>
+            </div>
+
+            <div class="glass-card chart-card">
+                <div class="section-header">
+                    <h2>Keyword Frequency</h2>
+                </div>
+                <canvas id="keywordChart"></canvas>
+            </div>
+        </section>
+
+        <section class="glass-card">
+            <div class="section-header">
+                <h2>Categorized Skills</h2>
+            </div>
+            <div class="category-grid">
+                {% for category, skills in result.categorized_skills.items() %}
+                    <div class="category-card">
+                        <h3>{{ category }}</h3>
+                        <div class="tag-container">
+                            {% if skills %}
+                                {% for skill in skills %}
+                                    <span class="tag success">{{ skill }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <span class="empty-text">No skills found</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="content-grid two-col">
+            <div class="glass-card">
+                <div class="section-header">
+                    <h2>Detected Skills</h2>
+                </div>
+                <div class="tag-container">
+                    {% for skill in result.detected_skills %}
+                        <span class="tag success">{{ skill }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="section-header">
+                    <h2>Missing Skills for {{ result.target_role }}</h2>
+                </div>
+                <div class="tag-container">
+                    {% for skill in result.missing_skills %}
+                        <span class="tag warning">{{ skill }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section class="content-grid two-col">
+            <div class="glass-card">
+                <div class="section-header">
+                    <h2>Matched JD Keywords</h2>
+                </div>
+                <div class="tag-container">
+                    {% if result.jd_detected_keywords %}
+                        {% for keyword in result.jd_detected_keywords %}
+                            <span class="tag success">{{ keyword }}</span>
+                        {% endfor %}
+                    {% else %}
+                        <span class="empty-text">No job description keywords matched</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="section-header">
+                    <h2>Missing JD Keywords</h2>
+                </div>
+                <div class="tag-container">
+                    {% if result.jd_missing_keywords %}
+                        {% for keyword in result.jd_missing_keywords %}
+                            <span class="tag danger">{{ keyword }}</span>
+                        {% endfor %}
+                    {% else %}
+                        <span class="empty-text">No missing JD keywords</span>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+
+        <section class="glass-card">
+            <div class="section-header">
+                <h2>Interview Questions Based on Your Resume</h2>
+            </div>
+            <ul class="suggestion-list modern-list">
+                {% for question in result.interview_questions %}
+                    <li>{{ question }}</li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <section class="glass-card">
+            <div class="section-header">
+                <h2>Learning Roadmap</h2>
+            </div>
+            <ul class="suggestion-list modern-list">
+                {% for step in result.learning_roadmap %}
+                    <li>{{ step }}</li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <section class="glass-card">
+            <div class="section-header">
+                <h2>Improvement Suggestions</h2>
+            </div>
+            <ul class="suggestion-list modern-list">
+                {% for suggestion in result.suggestions %}
+                    <li>{{ suggestion }}</li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <section class="glass-card">
+            <div class="section-header">
+                <h2>Generated Cover Letter</h2>
+            </div>
+            <div class="cover-letter-box">
+                <pre>{{ result.cover_letter }}</pre>
+            </div>
+        </section>
+
+        <div class="button-row">
+            <a href="/" class="btn btn-secondary">Analyze Another Resume</a>
+            <a href="/download-report" class="btn btn-secondary">Download JSON</a>
+            <a href="/download-pdf-report" class="btn btn-primary">Download PDF Report</a>
+        </div>
+    </div>
+
+    <script>
+        const roleLabels = {{ result.role_matches.keys()|list|tojson }};
+        const roleValues = {{ result.role_matches.values()|list|tojson }};
+        const keywordLabels = {{ result.top_keywords.keys()|list|tojson }};
+        const keywordValues = {{ result.top_keywords.values()|list|tojson }};
+
+        const isDark = document.body.classList.contains('dark-mode') ||
+                       localStorage.getItem('theme') === 'dark' ||
+                       localStorage.getItem('theme') === null;
+
+        const chartTextColor = isDark ? 'rgba(126,168,201,0.85)' : 'rgba(58,90,122,0.85)';
+        const chartGridColor = isDark ? 'rgba(100,200,255,0.08)' : 'rgba(0,100,200,0.08)';
+
+        Chart.defaults.color = chartTextColor;
+        Chart.defaults.borderColor = chartGridColor;
+
+        new Chart(document.getElementById('roleChart'), {
+            type: 'bar',
+            data: {
+                labels: roleLabels,
+                datasets: [{
+                    label: 'Role Match %',
+                    data: roleValues,
+                    borderRadius: 8,
+                    borderWidth: 0,
+                    backgroundColor: 'rgba(0,212,255,0.55)',
+                    hoverBackgroundColor: 'rgba(0,212,255,0.85)',
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(13,22,38,0.95)',
+                        titleColor: '#00d4ff',
+                        bodyColor: '#7ea8c9',
+                        borderColor: 'rgba(0,212,255,0.2)',
+                        borderWidth: 1,
+                    }
+                },
+                scales: {
+                    y: { beginAtZero: true, max: 100 },
+                    x: { ticks: { maxRotation: 30 } }
+                }
+            }
+        });
+
+        new Chart(document.getElementById('keywordChart'), {
+            type: 'bar',
+            data: {
+                labels: keywordLabels,
+                datasets: [{
+                    label: 'Keyword Count',
+                    data: keywordValues,
+                    borderRadius: 8,
+                    borderWidth: 0,
+                    backgroundColor: 'rgba(123,97,255,0.55)',
+                    hoverBackgroundColor: 'rgba(123,97,255,0.85)',
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(13,22,38,0.95)',
+                        titleColor: '#7b61ff',
+                        bodyColor: '#7ea8c9',
+                        borderColor: 'rgba(123,97,255,0.2)',
+                        borderWidth: 1,
+                    }
+                },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+
+        const themeToggle = document.getElementById('themeToggle');
+
+        function applyTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                themeToggle.textContent = '☀️ Light Mode';
+            } else {
+                document.body.classList.remove('dark-mode');
+                themeToggle.textContent = '🌙 Dark Mode';
+            }
+        }
+
+        applyTheme();
+
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+            applyTheme();
+        });
+    </script>
+</body>
+</html>

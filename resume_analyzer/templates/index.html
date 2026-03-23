@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Resume Analyzer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" href="static/logo.png">
+
+</head>
+<body>
+    <div class="page-bg"></div>
+
+    <header class="topbar">
+        <div class="logo">AI Resume Analyzer</div>
+        <div class="topbar-actions">
+            <a href="/history" class="btn btn-secondary small-btn">History</a>
+            <button id="themeToggle" class="btn btn-secondary small-btn" type="button">🌙 Dark Mode</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <section class="hero modern-hero">
+            <div class="hero-left">
+                <span class="badge">Advanced Resume Screening</span>
+                <h1>Analyze Your Resume Like a Real Hiring System</h1>
+                <p>
+                    Upload your resume, choose a target role, paste a job description,
+                    and get ATS score, skill analysis, interview questions, cover letter,
+                    learning roadmap, and downloadable reports.
+                </p>
+                <div class="hero-features">
+                    <div class="feature-pill">ATS Score</div>
+                    <div class="feature-pill">JD Match</div>
+                    <div class="feature-pill">Interview Questions</div>
+                    <div class="feature-pill">Cover Letter</div>
+                </div>
+            </div>
+
+            <div class="hero-right glass-card">
+                <h3>Quick Highlights</h3>
+                <div class="mini-stats">
+                    <div class="mini-stat">
+                        <span class="mini-number">12+</span>
+                        <span class="mini-label">Career Roles</span>
+                    </div>
+                    <div class="mini-stat">
+                        <span class="mini-number">PDF</span>
+                        <span class="mini-label">Reports</span>
+                    </div>
+                    <div class="mini-stat">
+                        <span class="mini-number">DB</span>
+                        <span class="mini-label">History</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="glass-card form-wrapper">
+            <div class="section-header">
+                <h2>Analyze Your Resume</h2>
+                <p>Upload your file and get a full dashboard instantly.</p>
+            </div>
+
+            <form id="resumeForm" enctype="multipart/form-data" class="modern-form">
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <div class="form-group">
+                            <label for="manual_name">Full Name</label>
+                            <input type="text" id="manual_name" name="manual_name" placeholder="Enter your full name if auto-detection is incorrect">
+                        </div>
+                        <div class="form-group" style="margin-top:1rem">
+                            <label for="manual_email">Email</label>
+                            <input type="email" id="manual_email" name="manual_email" placeholder="Enter your email if auto-detection is incorrect">
+                        </div>
+                        <label for="resume" style="margin-top:1rem">Upload Resume</label>
+                        <div class="upload-box" id="uploadBox">
+                            <input type="file" id="resume" name="resume" accept=".pdf,.docx" required>
+                            <div class="upload-content">
+                                <div class="upload-icon">📄</div>
+                                <h3>Drag &amp; Drop Resume Here</h3>
+                                <p>or click to browse PDF / DOCX files</p>
+                                <span id="fileName" class="file-name">No file selected</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="target_role">Target Role</label>
+                        <select name="target_role" id="target_role">
+                            <option value="">Auto Detect Best Role</option>
+                            {% for role in roles %}
+                                <option value="{{ role }}">{{ role }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="job_description">Job Description</label>
+                        <textarea id="job_description" name="job_description" rows="10" placeholder="Paste a job description here..."></textarea>
+                    </div>
+                </div>
+
+                <div class="button-area">
+                    <button type="submit" class="btn btn-primary">Analyze Resume</button>
+                    <p id="statusMessage" class="status-message"></p>
+                </div>
+            </form>
+        </section>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-card">
+            <div class="spinner"></div>
+            <h3>Analyzing Resume...</h3>
+            <p id="loadingText">Uploading and processing your file</p>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('resumeForm');
+        const statusMessage = document.getElementById('statusMessage');
+        const fileInput = document.getElementById('resume');
+        const fileName = document.getElementById('fileName');
+        const uploadBox = document.getElementById('uploadBox');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingText = document.getElementById('loadingText');
+        const themeToggle = document.getElementById('themeToggle');
+
+        const loadingSteps = [
+            "Uploading and processing your file",
+            "Extracting text from resume",
+            "Detecting skills and sections",
+            "Matching roles and calculating ATS",
+            "Generating smart insights"
+        ];
+
+        function applyTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                themeToggle.textContent = '☀️ Light Mode';
+            } else {
+                document.body.classList.remove('dark-mode');
+                themeToggle.textContent = '🌙 Dark Mode';
+            }
+        }
+
+        applyTheme();
+
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+            applyTheme();
+        });
+
+        fileInput.addEventListener('change', () => {
+            fileName.textContent = fileInput.files.length ? fileInput.files[0].name : 'No file selected';
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadBox.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                uploadBox.classList.add('dragover');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadBox.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                uploadBox.classList.remove('dragover');
+            });
+        });
+
+        uploadBox.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            if (files.length) {
+                fileInput.files = files;
+                fileName.textContent = files[0].name;
+            }
+        });
+
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+            statusMessage.textContent = "";
+            loadingOverlay.classList.add('show');
+
+            let stepIndex = 0;
+            loadingText.textContent = loadingSteps[stepIndex];
+            const interval = setInterval(() => {
+                stepIndex = (stepIndex + 1) % loadingSteps.length;
+                loadingText.textContent = loadingSteps[stepIndex];
+            }, 1000);
+
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                clearInterval(interval);
+
+                if (data.success) {
+                    window.location.href = data.redirect;
+                } else {
+                    loadingOverlay.classList.remove('show');
+                    statusMessage.textContent = data.error || "Something went wrong.";
+                }
+            } catch (error) {
+                clearInterval(interval);
+                loadingOverlay.classList.remove('show');
+                statusMessage.textContent = "Server error. Please try again.";
+            }
+        });
+    </script>
+</body>
+</html>
